@@ -17,6 +17,8 @@
 
 #include <rmf_geometry_testbed/IMDraw.hpp>
 
+#include <rmf_traffic/Motion.hpp>
+
 #include <math.h>
 #include <iostream>
 
@@ -24,6 +26,73 @@ namespace rmf_geometry_utils {
 
 static std::vector<sf::VertexArray> g_vertexarrays; //internal use only
 static const int VERTEX_ARRAYS_LIMIT = 16 * 1024;
+
+void IMDraw::draw_trajectory(const rmf_traffic::Trajectory& trajectory, const sf::Color& color)
+{
+  if (g_vertexarrays.size() >= VERTEX_ARRAYS_LIMIT)
+  {
+    std::cout << "Vertex array limit exceeded" << std::endl;
+    return;
+  }
+  //lifted from Trajectory::Implementation::accurate_curve_drawing
+
+  const auto motion = rmf_traffic::Motion::compute_cubic_splines(trajectory);
+
+  const auto step = std::chrono::milliseconds(100);
+  // const auto end = duration ?
+  //       start + duration.value() : motion->finish_time();
+  const auto end = motion->finish_time();
+  const auto begin = motion->start_time();
+
+  /*if (motion->start_time() <= start)
+  {
+    const Eigen::Vector3d p = motion->compute_position(start);
+    configure_arrow(p, profile.footprint()->get_characteristic_length(), color);
+    configure_footprint(p, profile.footprint()->get_characteristic_length());
+    configure_vicinity(p, profile.vicinity()->get_characteristic_length());
+  }*/
+  sf::VertexArray vtx_arr(sf::Lines);
+
+  for (auto time=begin; time <= end; time += step)
+  {
+    const auto next_time = std::min(time + step, end);
+
+    const Eigen::Vector2d p =
+        motion->compute_position(time).block<2,1>(0, 0);
+    const Eigen::Vector2d pn =
+        motion->compute_position(next_time).block<2,1>(0, 0);
+
+    sf::Vertex v;
+    v.color = color;
+
+    v.position = sf::Vector2f(p.x(), p.y());
+    vtx_arr.append(v);
+    
+    v.position = sf::Vector2f(pn.x(), pn.y());
+    vtx_arr.append(v);
+  }
+
+  g_vertexarrays.push_back(vtx_arr);
+}
+
+void IMDraw::draw_sampled_trajectory(const rmf_traffic::Trajectory& trajectory,
+    double seconds, const sf::Color& color)
+{
+  const auto motion = rmf_traffic::Motion::compute_cubic_splines(trajectory);
+
+  if (!trajectory.start_time())
+    return;
+  
+  auto time = *trajectory.start_time() + rmf_traffic::time::from_seconds(seconds);
+
+  const Eigen::Vector2d p =
+      motion->compute_position(time).block<2,1>(0, 0);
+  const Eigen::Vector2d v =
+      motion->compute_velocity(time).block<2,1>(0, 0);
+
+  IMDraw::draw_circle(p, 0.1f, color);
+  IMDraw::draw_arrow(p, p + v, color);
+}
 
 void IMDraw::draw_circle(const sf::Vector2f& center, double radius, const sf::Color& color, uint slices)
 {

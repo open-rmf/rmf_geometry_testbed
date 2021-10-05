@@ -38,7 +38,14 @@ target_include_directories(
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-add_executable(test_reedshepp_cubic
+######## FCL test ##########
+
+find_package(fcl 0.6 QUIET)
+if(fcl_FOUND)
+  set(FCL_LIBRARIES fcl)
+  message(STATUS "Using FCL version: ${FCL_VERSION}")
+
+  add_executable(test_reedshepp_cubic
   test/test_reedshepp_cubic.cpp
   )
 
@@ -47,62 +54,9 @@ target_link_libraries(
   PUBLIC
     rmf_geometry_utils
     ImGui-SFML::ImGui-SFML
+    fcl
 )
-
-######## FCL test ##########
-
-# find_package(fcl 0.6 QUIET)
-# if(fcl_FOUND)
-#   set(FCL_LIBRARIES fcl)
-#   message(STATUS "Using FCL version: ${FCL_VERSION}")
-
-#   add_executable(test_fcl_spline
-#     test/test_fcl_spline.cpp
-#   )
-
-#   target_link_libraries(
-#     test_fcl_spline
-#     PUBLIC
-#       rmf_planning_viz
-#       ImGui-SFML::ImGui-SFML
-#       fcl
-#   )
-
-#   add_executable(test_fcl_spline_offset
-#     test/test_fcl_spline_offset.cpp
-#     test/spline_offset_utils.cpp
-#   )
-
-#   target_link_libraries(
-#     test_fcl_spline_offset
-#     PUBLIC
-#       rmf_planning_viz
-#       ImGui-SFML::ImGui-SFML
-#       fcl
-#   )
-
-#   add_executable(test_sidecar
-#     test/test_sidecar.cpp
-#     test/spline_offset_utils.cpp
-#     test/test_sidecar_utils.cpp
-#   )
-
-#   target_link_libraries(test_sidecar
-#     rmf_planning_viz
-#     ImGui-SFML::ImGui-SFML
-#     fcl
-#   )
-
-#   add_executable(test_fcl_bvh
-#     test/test_fcl_bvh.cpp
-#   )
-
-#   target_link_libraries(test_fcl_bvh
-#     rmf_planning_viz
-#     ImGui-SFML::ImGui-SFML
-#     fcl
-#   )
-# endif()
+endif()
 
 ## copy font files
 install(
