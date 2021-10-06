@@ -46,7 +46,8 @@ if(fcl_FOUND)
   message(STATUS "Using FCL version: ${FCL_VERSION}")
 
   add_executable(test_reedshepp_cubic
-  test/test_reedshepp_cubic.cpp
+    test/test_reedshepp_cubic.cpp
+    test/ReedsShepp.cpp
   )
 
 target_link_libraries(

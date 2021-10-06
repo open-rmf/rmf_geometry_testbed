@@ -16,8 +16,8 @@
  *
 */
 
-#ifndef RMF_PLANNER_VIZ__DRAW__IMDRAW_HPP
-#define RMF_PLANNER_VIZ__DRAW__IMDRAW_HPP
+#ifndef RMF_GEOMETRY_TESTBED__DRAW__IMDRAW_HPP
+#define RMF_GEOMETRY_TESTBED__DRAW__IMDRAW_HPP
 
 #include <SFML/Graphics.hpp>
 #include <Eigen/Dense>
@@ -43,10 +43,6 @@ public:
     uint slices = 16);
 
   static void draw_axis(float size = 1.0f);
-
-  // static void draw_trajectory(
-  //   const rmf_traffic::Trajectory& trajectory,
-  //   const sf::Color& color = sf::Color(255, 255, 255, 255));
 
   static void draw_line(const sf::Vector2f& start, const sf::Vector2f& end, const sf::Color& color = sf::Color(255, 255, 255, 255));
 
