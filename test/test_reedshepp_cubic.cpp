@@ -127,9 +127,20 @@ struct DubinsCurve
       
       IMDraw::draw_line(tangent_start, tangent_end, sf::Color(64,64,64));
     }
-    else
+    else if (modes[1] == CURVE_LEFT || modes[1] == CURVE_RIGHT)
     {
-      //todo
+      Eigen::Vector2d start_to_end_circle = end_circle_pos - start_circle_pos;
+      double d = start_to_end_circle.norm();
+
+      double theta = acos(d / (4.0 * turning_radius));
+      if (modes[1] == CURVE_LEFT)
+        theta = -theta;
+      
+      Eigen::Vector2d n = Eigen::Vector2d(cos(theta), sin(theta));
+      n *= turning_radius * 2.0;
+
+      Eigen::Vector2d mid_circle_pos = start_circle_pos + n;
+      IMDraw::draw_circle(mid_circle_pos, turning_radius, sf::Color(64,64,64), 32);
     }
   }
 
@@ -254,9 +265,11 @@ struct DubinsCurve
       traj.insert(start_t, hermite_p0_3d, hermite_v0_3d / duration_per_slice);
       traj.insert(end_time,   hermite_p1_3d, hermite_v1_3d / duration_per_slice);
     };
-    convert_bspline_to_hermite(p0, p0, p1, p2, sf::Color::Green, 0.0);
-    convert_bspline_to_hermite(p0, p1, p2, p3, sf::Color::Green, duration_per_slice);
-    convert_bspline_to_hermite(p1, p2, p3, p3, sf::Color::Green, duration_per_slice * 2.0);
+
+    sf::Color color(0, 127, 0);
+    convert_bspline_to_hermite(p0, p0, p1, p2, color, 0.0);
+    convert_bspline_to_hermite(p0, p1, p2, p3, color, duration_per_slice);
+    convert_bspline_to_hermite(p1, p2, p3, p3, color, duration_per_slice * 2.0);
   }
 
   void circular_arc_to_trajectory(Eigen::Vector2d circle_center, 
@@ -264,7 +277,7 @@ struct DubinsCurve
     rmf_traffic::Trajectory& traj, 
     std::chrono::time_point<std::chrono::steady_clock> start_time,
     std::chrono::time_point<std::chrono::steady_clock>& end_time_out,
-    double velocity)
+    double velocity, bool anticlockwise)
   {
     Eigen::Vector2d start_arc_vector = start_arc_pt - circle_center;
     start_arc_vector.normalize();
@@ -276,6 +289,9 @@ struct DubinsCurve
 
     // break into subarcs to better approximate the circular arc
     double arc_difference = end_arc_radians - start_arc_radians;
+    if (!anticlockwise)
+      arc_difference = -(2.0 * M_PI - arc_difference);
+
     double min_interval_rot = M_PI_2;
     int intervals = 1;
     if (arc_difference > min_interval_rot)
@@ -325,7 +341,8 @@ struct DubinsCurve
     }
 
     //figure out tangent lines
-    Eigen::Vector2d tangent_start, tangent_end;
+    Eigen::Vector2d intermediate_start, intermediate_end;
+    Eigen::Vector2d mid_circle_pos;
     if (modes[1] == STRAIGHT_LINE)
     {
       Eigen::Vector2d start_circle_to_end_circle = end_circle_pos - start_circle_pos;
@@ -335,70 +352,65 @@ struct DubinsCurve
       Eigen::Vector2d perp = Eigen::Vector2d(-offset.y(), offset.x());
       
       if (modes[0] == CURVE_LEFT)
-        tangent_start = start_circle_pos - perp;
+        intermediate_start = start_circle_pos - perp;
       else
-        tangent_start = start_circle_pos + perp;
+        intermediate_start = start_circle_pos + perp;
 
       if (modes[2] == CURVE_LEFT)
-        tangent_end = end_circle_pos - perp;
+        intermediate_end = end_circle_pos - perp;
       else
-        tangent_end = end_circle_pos + perp;
+        intermediate_end = end_circle_pos + perp;
     }
-    else if (modes[1] == CURVE_LEFT)
+    else
     {
       // triple curves
-      if (modes[0] == modes[2] && modes[0] == CURVE_RIGHT)
-      {
-        Eigen::Vector2d start_circle_to_end_circle = end_circle_pos - start_circle_pos;
-        double dist_start_end_circle = start_circle_to_end_circle.norm();
+      Eigen::Vector2d start_to_end_circle = end_circle_pos - start_circle_pos;
+      double d = start_to_end_circle.norm();
 
-        double v = dist_start_end_circle / (4.0 * turning_radius);
-        double theta = acos(v);
-        // printf("%g, theta = %g\n", v, theta);
-        
-        Eigen::Vector2d rotated_vec = Eigen::Vector2d(cos(theta), sin(theta));
-        rotated_vec *= 2.0 * turning_radius;
+      double theta = acos(d / (4.0 * turning_radius));
+      if (modes[1] == CURVE_LEFT)
+        theta = -theta;
+      
+      Eigen::Vector2d n = Eigen::Vector2d(cos(theta), sin(theta));
+      n *= turning_radius;
+      mid_circle_pos = start_circle_pos + n * 2.0;
 
-        Eigen::Vector2d mid_circle_pt = start_circle_pos;
-        mid_circle_pt += rotated_vec;
+      intermediate_start = start_circle_pos + n;
 
-        //IMDraw::draw_circle(mid_circle_pt, turning_radius, sf::Color(0, 127,0));
-      }
+      Eigen::Vector2d end_to_mid_circle = mid_circle_pos - end_circle_pos;
+      end_to_mid_circle.normalize();
+      intermediate_end = end_circle_pos + end_to_mid_circle * turning_radius;
     }
 
     auto now = std::chrono::steady_clock::now();
     std::chrono::time_point<std::chrono::steady_clock> next_timing;
-    
-    circular_arc_to_trajectory(start_circle_pos, start_pos, tangent_start, traj, 
-      now, next_timing, velocity);
 
-    now = next_timing;
-    line_to_trajectory(tangent_start, tangent_end, traj, now, next_timing, velocity);
+    // do conversions
+    if (modes[1] == STRAIGHT_LINE)
+    {
+      circular_arc_to_trajectory(start_circle_pos, start_pos, intermediate_start, traj, 
+        now, next_timing, velocity, true);
 
-    now = next_timing;
-    circular_arc_to_trajectory(end_circle_pos, tangent_end, end_pos, traj,
-      now, next_timing, velocity);
+      now = next_timing;
+      line_to_trajectory(intermediate_start, intermediate_end, traj, now, next_timing, velocity);
 
-    /*{
-      Eigen::Vector3d r0 = Eigen::Vector3d(0, 0, 0);
-      fcl::SplineMotion<double> spline(p0, p1, p2, p3,
-        r0, r0, r0, r0);
+      now = next_timing;
+      circular_arc_to_trajectory(end_circle_pos, intermediate_end, end_pos, traj,
+        now, next_timing, velocity, true);
+    }
+    else
+    {
+      circular_arc_to_trajectory(start_circle_pos, start_pos, intermediate_start, traj, 
+        now, next_timing, velocity, true);
+      
+      now = next_timing;
+      circular_arc_to_trajectory(mid_circle_pos, intermediate_start, intermediate_end, traj, 
+        now, next_timing, velocity, false);
 
-      // draw fcl spline
-      draw_fcl_spline(spline, sf::Color::Green);
-      ret.push_back(spline);
-
-      fcl::SplineMotion<double> spline2(p0, p0, p1, p2,
-        r0, r0, r0, r0);
-      draw_fcl_spline(spline2, sf::Color::Green);
-      ret.push_back(spline2);
-
-      fcl::SplineMotion<double> spline3(p1, p2, p3, p3,
-        r0, r0, r0, r0);
-      draw_fcl_spline(spline3, sf::Color::Green);
-      ret.push_back(spline3);
-    }*/
-
+      now = next_timing;
+      circular_arc_to_trajectory(end_circle_pos, intermediate_end, end_pos, traj,
+        now, next_timing, velocity, true);
+    }
   }
 };
 
@@ -499,14 +511,18 @@ int main()
       IMDraw::draw_axis();
       
       if (show_intermediates)
+      {
         c.draw();
-      // IMDraw::draw_circle(c.start_pos, 0.1, sf::Color::Cyan);
-      // Eigen::Vector2d start_dir(cos(c.start_yaw), sin(c.start_yaw));
-      // IMDraw::draw_arrow(c.start_pos, c.start_pos + start_dir, sf::Color::Cyan);
 
-      // IMDraw::draw_circle(c.end_pos, 0.1, sf::Color::Cyan);
-      // Eigen::Vector2d end_dir(cos(c.end_yaw), sin(c.end_yaw));
-      // IMDraw::draw_arrow(c.end_pos, c.end_pos + end_dir, sf::Color::Cyan);
+        sf::Color cyan_faded(0, 127, 127);
+        IMDraw::draw_circle(c.start_pos, 0.1, cyan_faded);
+        Eigen::Vector2d start_dir(cos(c.start_yaw), sin(c.start_yaw));
+        IMDraw::draw_arrow(c.start_pos, c.start_pos + start_dir, cyan_faded);
+
+        IMDraw::draw_circle(c.end_pos, 0.1, cyan_faded);
+        Eigen::Vector2d end_dir(cos(c.end_yaw), sin(c.end_yaw));
+        IMDraw::draw_arrow(c.end_pos, c.end_pos + end_dir, cyan_faded);
+      }
 
       
       rmf_traffic::Trajectory t1;
@@ -551,9 +567,24 @@ std::vector<CurveMeta> setup_presets()
     meta.curve.modes[1] = STRAIGHT_LINE;
     meta.curve.modes[2] = CURVE_RIGHT;
     
-    meta.curve.start_pos = Eigen::Vector2d(-8, -4);
+    meta.curve.start_pos = Eigen::Vector2d(-6, -4);
     meta.curve.start_yaw = 90.0 / 180.0 * M_PI;
-    meta.curve.end_pos = Eigen::Vector2d(8, -4);
+    meta.curve.end_pos = Eigen::Vector2d(6, -4);
+    meta.curve.end_yaw = -90.0 / 180.0 * M_PI;
+    
+    ret.push_back(meta);
+  }
+
+  {
+    CurveMeta meta;
+    meta.name = "LSL";
+    meta.curve.modes[0] = CURVE_LEFT;
+    meta.curve.modes[1] = STRAIGHT_LINE;
+    meta.curve.modes[2] = CURVE_LEFT;
+    
+    meta.curve.start_pos = Eigen::Vector2d(6, -4);
+    meta.curve.start_yaw = 90.0 / 180.0 * M_PI;
+    meta.curve.end_pos = Eigen::Vector2d(-6, -4);
     meta.curve.end_yaw = -90.0 / 180.0 * M_PI;
     
     ret.push_back(meta);
@@ -566,9 +597,9 @@ std::vector<CurveMeta> setup_presets()
     meta.curve.modes[1] = STRAIGHT_LINE;
     meta.curve.modes[2] = CURVE_LEFT;
     
-    meta.curve.start_pos = Eigen::Vector2d(-8, -4);
+    meta.curve.start_pos = Eigen::Vector2d(-6, -4);
     meta.curve.start_yaw = 90.0 / 180.0 * M_PI;
-    meta.curve.end_pos = Eigen::Vector2d(7, -4);
+    meta.curve.end_pos = Eigen::Vector2d(6, -4);
     meta.curve.end_yaw = -90.0 / 180.0 * M_PI;
     
     ret.push_back(meta);
@@ -576,17 +607,33 @@ std::vector<CurveMeta> setup_presets()
 
   {
     CurveMeta meta;
-    meta.name = "LSR (todo)";
+    meta.name = "LSR";
     meta.curve.modes[0] = CURVE_LEFT;
     meta.curve.modes[1] = STRAIGHT_LINE;
     meta.curve.modes[2] = CURVE_RIGHT;
     
-    meta.curve.start_pos = Eigen::Vector2d(-8, -4);
-    meta.curve.start_yaw = 90.0 / 180.0 * M_PI;
-    meta.curve.end_pos = Eigen::Vector2d(8, -4);
-    meta.curve.end_yaw = -90.0 / 180.0 * M_PI;
+    meta.curve.start_pos = Eigen::Vector2d(-6, -4);
+    meta.curve.start_yaw = -M_PI / 3.0;
+    meta.curve.end_pos = Eigen::Vector2d(6, -3);
+    meta.curve.end_yaw = -M_PI / 2.0;
     
     ret.push_back(meta);
   }
+
+  {
+    CurveMeta meta;
+    meta.name = "RLR";
+    meta.curve.modes[0] = CURVE_LEFT;
+    meta.curve.modes[1] = CURVE_RIGHT;
+    meta.curve.modes[2] = CURVE_LEFT;
+    
+    meta.curve.start_pos = Eigen::Vector2d(0, -4);
+    meta.curve.start_yaw = 0.0;
+    meta.curve.end_pos = Eigen::Vector2d(0, 0.85);
+    meta.curve.end_yaw = M_PI;
+    
+    ret.push_back(meta);
+  }
+
   return ret;
 }
