@@ -86,7 +86,8 @@ void NonHolonomicMotion::draw()
   }
 }
 
-void NonHolonomicMotion::to_rmf_trajectory(rmf_traffic::Trajectory& traj, double velocity)
+void NonHolonomicMotion::to_rmf_trajectory(rmf_traffic::Trajectory& traj,
+  double velocity, int quality)
 {
   Eigen::Vector2d start_circle_pos;
   Eigen::Vector2d end_circle_pos;
@@ -161,27 +162,27 @@ void NonHolonomicMotion::to_rmf_trajectory(rmf_traffic::Trajectory& traj, double
   if (modes[1] == STRAIGHT_LINE)
   {
     circular_arc_to_trajectory(start_circle_pos, start_pos, intermediate_start, traj, 
-      now, next_timing, velocity, true);
+      now, next_timing, velocity, true, quality);
 
     now = next_timing;
     line_to_trajectory(intermediate_start, intermediate_end, traj, now, next_timing, velocity);
 
     now = next_timing;
     circular_arc_to_trajectory(end_circle_pos, intermediate_end, end_pos, traj,
-      now, next_timing, velocity, true);
+      now, next_timing, velocity, true, quality);
   }
   else
   {
     circular_arc_to_trajectory(start_circle_pos, start_pos, intermediate_start, traj, 
-      now, next_timing, velocity, true);
+      now, next_timing, velocity, true, quality);
     
     now = next_timing;
     circular_arc_to_trajectory(mid_circle_pos, intermediate_start, intermediate_end, traj, 
-      now, next_timing, velocity, false);
+      now, next_timing, velocity, false, quality);
 
     now = next_timing;
     circular_arc_to_trajectory(end_circle_pos, intermediate_end, end_pos, traj,
-      now, next_timing, velocity, true);
+      now, next_timing, velocity, true, quality);
   }
 }
 
@@ -318,7 +319,7 @@ void NonHolonomicMotion::circular_arc_to_trajectory(Eigen::Vector2d circle_cente
     rmf_traffic::Trajectory& traj, 
     std::chrono::time_point<std::chrono::steady_clock> start_time,
     std::chrono::time_point<std::chrono::steady_clock>& end_time_out,
-    double velocity, bool anticlockwise)
+    double velocity, bool anticlockwise, int quality)
 {
   Eigen::Vector2d start_arc_vector = start_arc_pt - circle_center;
   start_arc_vector.normalize();
@@ -340,6 +341,7 @@ void NonHolonomicMotion::circular_arc_to_trajectory(Eigen::Vector2d circle_cente
     double interval_d = arc_difference / min_interval_rot;
     intervals = (int)std::ceil(interval_d);
   }
+  intervals *= quality;
 
   double arc_per_interval = arc_difference / (double)intervals;
   for (int i=0; i<intervals; ++i)

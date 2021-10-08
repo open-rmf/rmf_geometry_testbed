@@ -48,7 +48,8 @@ struct NonHolonomicMotion
 
   void draw();
 
-  void to_rmf_trajectory(rmf_traffic::Trajectory& traj, double velocity);
+  void to_rmf_trajectory(rmf_traffic::Trajectory& traj, double velocity, 
+    int quality = 1);
 
 private:
   // subroutines
@@ -72,7 +73,7 @@ private:
     rmf_traffic::Trajectory& traj, 
     std::chrono::time_point<std::chrono::steady_clock> start_time,
     std::chrono::time_point<std::chrono::steady_clock>& end_time_out,
-    double velocity, bool anticlockwise);
+    double velocity, bool anticlockwise, int quality = 1);
 
 };
 

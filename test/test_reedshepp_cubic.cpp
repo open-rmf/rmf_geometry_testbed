@@ -143,6 +143,9 @@ int main()
     static float turning_radius = 1.0;
     ImGui::DragFloat("Turning radius", &turning_radius, 0.1f, 0.0f, 20.0f);
 
+    static int quality = 1;
+    ImGui::DragInt("Quality", &quality, 1.0f, 1, 10);
+
     ImGui::Separator();
 
 
@@ -168,7 +171,7 @@ int main()
 
       
       rmf_traffic::Trajectory t1;
-      motion.to_rmf_trajectory(t1, velocity);
+      motion.to_rmf_trajectory(t1, velocity, quality);
       ImGui::Text("rmf::Trajectory size: %d", t1.size());
 
       if (show_rmf_traffic_traj)
@@ -212,6 +215,21 @@ std::vector<CurveMeta> setup_presets()
     ret.push_back(meta);
   }
 
+  {
+    CurveMeta meta;
+    meta.name = "RSR (Straight lane + target yaw)";
+    meta.motion.modes[0] = CURVE_RIGHT;
+    meta.motion.modes[1] = STRAIGHT_LINE;
+    meta.motion.modes[2] = CURVE_RIGHT;
+    
+    meta.motion.start_pos = Eigen::Vector2d(-6, -3.25);
+    meta.motion.start_yaw = 0.0;
+    meta.motion.end_pos = Eigen::Vector2d(6, -4);
+    meta.motion.end_yaw = -90.0 / 180.0 * M_PI;
+    
+    ret.push_back(meta);
+  }
+  
   {
     CurveMeta meta;
     meta.name = "LSL";
