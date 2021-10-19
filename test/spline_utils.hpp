@@ -16,8 +16,8 @@
 */
 
 
-#ifndef RMF_PLANNER_VIZ__DRAW__SPLINEOFFSETUTILS_HPP
-#define RMF_PLANNER_VIZ__DRAW__SPLINEOFFSETUTILS_HPP
+#ifndef RMF_GEOMETRY_TESTBED__SPLINEUTILS_HPP
+#define RMF_GEOMETRY_TESTBED__SPLINEUTILS_HPP
 
 #include <array>
 #include <eigen3/Eigen/Dense>
@@ -41,5 +41,5 @@ fcl::SplineMotion<double> convert_catmullrom_to_bspline(
   Eigen::Vector3d p3,
   bool show_control_poly);
 
-#endif // RMF_PLANNER_VIZ__DRAW__SPLINEOFFSETUTILS_HPP
+#endif // RMF_GEOMETRY_TESTBED__SPLINEUTILS_HPP
 

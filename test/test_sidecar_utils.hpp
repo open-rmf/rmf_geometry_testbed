@@ -18,8 +18,8 @@
 
 
 
-#ifndef RMF_PLANNER_VIZ__DRAW__CUSTOM_CONSERVATIVE_ADV_ALGO_HPP
-#define RMF_PLANNER_VIZ__DRAW__CUSTOM_CONSERVATIVE_ADV_ALGO_HPP
+#ifndef RMF_GEOMETRY_TESTBED__TEST_SIDECAR_UTILS_HPP
+#define RMF_GEOMETRY_TESTBED__TEST_SIDECAR_UTILS_HPP
 
 #include <Eigen/Dense>
 #include <fcl/math/motion/spline_motion.h>
@@ -72,4 +72,4 @@ struct Preset
 
 std::vector<Preset> setup_presets();
 
-#endif // RMF_PLANNER_VIZ__DRAW__CUSTOM_CONSERVATIVE_ADV_ALGO_HPP
+#endif // RMF_GEOMETRY_TESTBED__TEST_SIDECAR_UTILS_HPP
