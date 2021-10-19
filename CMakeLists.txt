@@ -38,6 +38,17 @@ target_include_directories(
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
+add_executable(test_spline
+    test/test_spline.cpp
+  )
+
+target_link_libraries(
+  test_spline
+  PUBLIC
+    rmf_geometry_utils
+    ImGui-SFML::ImGui-SFML
+)
+
 ######## FCL test ##########
 
 find_package(fcl 0.6 QUIET)
@@ -50,13 +61,28 @@ if(fcl_FOUND)
     test/ReedsShepp.cpp
   )
 
-target_link_libraries(
-  test_reedshepp_cubic
-  PUBLIC
-    rmf_geometry_utils
-    ImGui-SFML::ImGui-SFML
-    fcl
-)
+  target_link_libraries(
+    test_reedshepp_cubic
+    PUBLIC
+      rmf_geometry_utils
+      ImGui-SFML::ImGui-SFML
+      fcl
+  )
+
+  add_executable(test_sidecar
+    test/test_sidecar.cpp
+    test/test_sidecar_utils.cpp
+    test/spline_utils.cpp
+  )
+
+  target_link_libraries(
+    test_sidecar
+    PUBLIC
+      rmf_geometry_utils
+      ImGui-SFML::ImGui-SFML
+      fcl
+  )
+
 endif()
 
 ## copy font files
