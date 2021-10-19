@@ -79,4 +79,4 @@ public:
 
 } // namespace rmf_geometry_utils
 
-#endif // RMF_PLANNER_VIZ__DRAW__IMDRAW_HPP
+#endif // RMF_GEOMETRY_TESTBED__DRAW__IMDRAW_HPP
