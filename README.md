@@ -1,3 +1,4 @@
+# This repository has been archived as the project is moving away from FCL
 # rmf_geometry_testbed: Interactive tests for testing collision detection, collision primitives approximation
 
 1. Create a new colcon workspace
